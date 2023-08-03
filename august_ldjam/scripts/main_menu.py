@@ -1,6 +1,6 @@
 import pyglet
-import math
-import time
+#import math
+import json
 import webbrowser
 
 # Задаем размеры экрана
@@ -8,7 +8,7 @@ screen_width = 1920
 screen_height = 1080
 
 # Создаем окно приложения
-window = pyglet.window.Window(screen_width, screen_height)
+window = pyglet.window.Window(screen_width, screen_height, fullscreen=False)
 
 
 class FadeInAnimation:
@@ -56,12 +56,221 @@ class SlideAnimation:
             t = self.elapsed_time / self.duration
             self.sprite.x = self.start_x + (self.target_x - self.start_x) * t
 
+
+#class Text:
+    #def __init__(self, text, text_font=None, text_size=None, text_color=None, text_animation=None, text_):
+
+class SettingsMenu:
+    settings_slider_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Settings_menu/prefs_slider.png')
+    settings_slider_button_1 = pyglet.sprite.Sprite(settings_slider_image, x=screen_width // 2 + 50, y=screen_height // 2 + 12)
+    settings_slider_button_2 = pyglet.sprite.Sprite(settings_slider_image, x=screen_width // 2 + 50, y=screen_height // 2 - 88)
+    settings_slider_button_3 = pyglet.sprite.Sprite(settings_slider_image, x=screen_width // 2 + 50, y=screen_height // 2 - 188)
+    def __init__(self, background_image, parent_window):
+        self.parent_window = parent_window
+        self.background = pyglet.image.load(background_image)
+        self.background_sprite = pyglet.sprite.Sprite(self.background, x=0, y=0)
+
+        # Флаг для обозначения состояния перетаскивания settings_slider_button_1
+        self.dragging_settings_slider_button_1 = False
+        self.dragging_settings_slider_button_2 = False
+        self.dragging_settings_slider_button_3 = False
+
+        # Загрузка сохраненных позиций слайдеров при запуске приложения
+        self.load_slider_positions('slider_positions.json')
+        self.load_screen_mode_from_json('screen_mode.json')
+
+        # Загрузка изображений кнопок
+        settings_text_speed_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Settings_menu/prefs_text_speed.png')
+        settings_volume_of_music_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Settings_menu/prefs_volume_of_music.png')
+        settings_volume_of_sound_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Settings_menu/prefs_volume_of_sounds.png')
+        settings_line_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Settings_menu/prefs_line.png')
+        settings_go_to_full_screen_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Settings_menu/prefs_go_to_full.png')
+        settings_go_to_window_screen_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Settings_menu/prefs_go_to_window.png')
+
+        # Создание спрайтов для кнопок
+        self.settings_text_speed_button = pyglet.sprite.Sprite(settings_text_speed_image, x=screen_width // 2 - 200, y=screen_height // 2 + 50)
+        self.settings_volume_of_music_button = pyglet.sprite.Sprite(settings_volume_of_music_image, x=screen_width // 2 - 200, y=screen_height // 2 - 50)
+        self.settings_volume_of_sound_button = pyglet.sprite.Sprite(settings_volume_of_sound_image, x=screen_width // 2 - 200, y=screen_height // 2 - 150)
+
+        self.settings_line_button_1 = pyglet.sprite.Sprite(settings_line_image, x=screen_width // 2 - 160, y=screen_height // 2 + 20)
+        self.settings_line_button_2 = pyglet.sprite.Sprite(settings_line_image, x=screen_width // 2 - 160, y=screen_height // 2 - 80)
+        self.settings_line_button_3 = pyglet.sprite.Sprite(settings_line_image, x=screen_width // 2 - 160, y=screen_height // 2 - 180)
+
+        self.settings_go_to_full_screen_button = pyglet.sprite.Sprite(settings_go_to_full_screen_image, x=screen_width // 2 - 30, y=screen_height // 2 - 340)
+        self.settings_go_to_window_screen_button = pyglet.sprite.Sprite(settings_go_to_window_screen_image, x=screen_width // 2 - 30, y=screen_height // 2 - 340)
+
+        self.settings_go_to_window_screen_button.visible = False
+
+
+        self.settings_text_speed_button.scale = 0.55
+        self.settings_volume_of_music_button.scale = 0.55
+        self.settings_volume_of_sound_button.scale = 0.55
+        self.settings_line_button_1.scale = 0.6
+        self.settings_line_button_2.scale = 0.6
+        self.settings_line_button_3.scale = 0.6
+        self.settings_slider_button_1.scale = 0.6
+        self.settings_slider_button_2.scale = 0.6
+        self.settings_slider_button_3.scale = 0.6
+        self.settings_go_to_full_screen_button.scale = 0.5
+        self.settings_go_to_window_screen_button.scale = 0.5
+
+
+    def save_slider_positions(self, filename):
+        data = {
+            'slider_button_1_x': self.settings_slider_button_1.x,
+            'slider_button_2_x': self.settings_slider_button_2.x,
+            'slider_button_3_x': self.settings_slider_button_3.x
+        }
+        with open(filename, 'w') as f:
+            json.dump(data, f)
+
+    def load_slider_positions(self, filename):
+        try:
+            with open(filename, 'r') as f:
+                data = json.load(f)
+            self.settings_slider_button_1.x = data['slider_button_1_x']
+            self.settings_slider_button_2.x = data['slider_button_2_x']
+            self.settings_slider_button_3.x = data['slider_button_3_x']
+        except FileNotFoundError:
+            # Обработка случая, когда файл не найден (например, при первом запуске приложения)
+            pass
+
+
+    def save_screen_mode_to_json(self, file_name):
+        data = {
+            'fullscreen': self.fullscreen
+        }
+        with open(file_name, 'w') as file:
+            json.dump(data, file)
+
+    def load_screen_mode_from_json(self, file_name):
+        try:
+            with open(file_name, 'r') as file:
+                data = json.load(file)
+                self.fullscreen = data['fullscreen']
+                window.set_fullscreen(self.fullscreen)  # Установите режим полноэкранного окна
+        except FileNotFoundError:
+            # Если файл не найден, оставляем текущее состояние fullscreen без изменений
+            pass
+
+
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        # Проверяем, попал ли курсор в settings_slider_button_1 и зажата левая кнопка мыши
+        if button == pyglet.window.mouse.LEFT and \
+                self.settings_slider_button_1.x <= x <= self.settings_slider_button_1.x + self.settings_slider_button_1.width and \
+                self.settings_slider_button_1.y <= y <= self.settings_slider_button_1.y + self.settings_slider_button_1.height:
+
+            self.dragging_settings_slider_button_1 = True
+
+        if button == pyglet.window.mouse.LEFT and \
+                self.settings_slider_button_2.x <= x <= self.settings_slider_button_2.x + self.settings_slider_button_2.width and \
+                self.settings_slider_button_2.y <= y <= self.settings_slider_button_2.y + self.settings_slider_button_2.height:
+
+            self.dragging_settings_slider_button_2 = True
+
+        if button == pyglet.window.mouse.LEFT and \
+                self.settings_slider_button_3.x <= x <= self.settings_slider_button_3.x + self.settings_slider_button_3.width and \
+                self.settings_slider_button_3.y <= y <= self.settings_slider_button_3.y + self.settings_slider_button_3.height:
+
+            self.dragging_settings_slider_button_3 = True
+
+        if button == pyglet.window.mouse.LEFT and \
+            self.settings_go_to_full_screen_button.x <= x <= self.settings_go_to_full_screen_button.x + self.settings_go_to_full_screen_button.width and \
+            self.settings_go_to_full_screen_button.y <= y <= self.settings_go_to_full_screen_button.y + self.settings_go_to_full_screen_button.height and \
+            self.settings_go_to_window_screen_button.visible is False:
+
+            set_fullscreen()
+            self.settings_go_to_window_screen_button.visible = True
+            self.settings_go_to_full_screen_button.visible = False
+        elif button == pyglet.window.mouse.LEFT and \
+            self.settings_go_to_full_screen_button.x <= x <= self.settings_go_to_full_screen_button.x + self.settings_go_to_full_screen_button.width and \
+            self.settings_go_to_full_screen_button.y <= y <= self.settings_go_to_full_screen_button.y + self.settings_go_to_full_screen_button.height and \
+            self.settings_go_to_window_screen_button.visible is True:
+
+            set_windowed()
+            self.settings_go_to_window_screen_button.visible = False
+            self.settings_go_to_full_screen_button.visible = True
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        pass
+
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        if self.dragging_settings_slider_button_1 and buttons & pyglet.window.mouse.LEFT and \
+                self.settings_slider_button_1.y - 20 <= y <= self.settings_slider_button_1.y + self.settings_slider_button_1.height + 20:
+            # Определяем новую позицию X для слайдера
+            new_x = x
+            if new_x < 798:
+                new_x = 798
+            elif new_x > 1226:
+                new_x = 1220
+            # Обновляем координату X settings_slider_button_1 на основе новой позиции
+            self.settings_slider_button_1.x = new_x
+            self.save_slider_positions('slider_positions.json')
+
+        if self.dragging_settings_slider_button_2 and buttons & pyglet.window.mouse.LEFT and \
+                self.settings_slider_button_2.y - 20 <= y <= self.settings_slider_button_2.y + self.settings_slider_button_2.height + 20:
+            # Обновляем координату X settings_slider_button_1 на основе текущей позиции мыши
+            new2_x = x
+            if new2_x < 798:
+                new2_x = 798
+            elif new2_x > 1226:
+                new2_x = 1220
+            # Обновляем координату X settings_slider_button_1 на основе новой позиции
+            self.settings_slider_button_2.x = new2_x
+            self.save_slider_positions('slider_positions.json')
+
+        if self.dragging_settings_slider_button_3 and buttons & pyglet.window.mouse.LEFT and \
+                self.settings_slider_button_3.y - 20 <= y <= self.settings_slider_button_3.y + self.settings_slider_button_3.height + 20:
+            # Обновляем координату X settings_slider_button_1 на основе текущей позиции мыши
+            new3_x = x
+            if new3_x < 798:
+                new3_x = 798
+            elif new3_x > 1226:
+                new3_x = 1220
+            # Обновляем координату X settings_slider_button_1 на основе новой позиции
+            self.settings_slider_button_3.x = new3_x
+            self.save_slider_positions('slider_positions.json')
+
+
+    def draw(self):
+        self.background_sprite.draw()
+        self.settings_text_speed_button.draw()
+        self.settings_volume_of_music_button.draw()
+        self.settings_volume_of_sound_button.draw()
+        self.settings_line_button_1.draw()
+        self.settings_line_button_2.draw()
+        self.settings_line_button_3.draw()
+        self.settings_slider_button_1.draw()
+        self.settings_slider_button_2.draw()
+        self.settings_slider_button_3.draw()
+        self.settings_go_to_full_screen_button.draw()
+        self.settings_go_to_window_screen_button.draw()
+
+
+class LoadMenu:
+    def __init__(self, background_image, parent_window):
+        self.parent_window = parent_window
+        self.background = pyglet.image.load(background_image)
+        self.background_sprite = pyglet.sprite.Sprite(self.background, x=0, y=0)
+
+
+    def on_hide(self):
+        self.is_showing = False
+
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        pass
+
+    def draw(self):
+        self.background_sprite.draw()
+
 class AuthorsMenu:
     def __init__(self, background_image, parent_window):
         self.parent_window = parent_window
         self.background = pyglet.image.load(background_image)
         self.background_sprite = pyglet.sprite.Sprite(self.background, x=0, y=0)
-        self.authors_names = ['Вася пупкин', 'то сё туда сда', 'ссылка']
         self.labels = []
 
         self.author_info = [
@@ -95,12 +304,6 @@ class AuthorsMenu:
             else:
                 label_y -= 50  # Отступ между ссылками
 
-    def draw(self):
-        self.background_sprite.draw()
-        for label in self.labels:
-            label.draw()
-
-
     def on_hide(self):
         self.is_showing = False
 
@@ -108,33 +311,41 @@ class AuthorsMenu:
         for label in self.labels:
             # Проверяем, что клик был по ссылке на соцсеть 1
             if label.text == 'Ссылка на соцсеть 1':
-                if label.x <= x <= label.x + label.content_width and label.y <= y <= label.y + label.content_height:
+                if label.x <= x <= label.x + 400 and label.y - 100 <= y <= label.y:
                     webbrowser.open('https://vk.com/redbreadstudio')
 
-
+    def draw(self):
+        self.background_sprite.draw()
+        for label in self.labels:
+            label.draw()
 
 class MainMenu:
     def __init__(self, background_image):
+        self.fullscreen = False
         self.background_index = 0
         self.background = pyglet.image.load(background_image)
         self.background_sprite = pyglet.sprite.Sprite(self.background, x=0, y=0)
         self.authors_menu = None
+        self.settings_menu = None
+        self.load_menu = None
         self.show_authors = False
+        self.show_settings = False
+        self.show_loads = False
 
         # Загрузка изображений кнопок
-        new_game_button_image = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/start_idle (3).png')
-        save_button_image = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/load_idle (3).png')
-        galery_button_image = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/galery_idle (3).png')
-        settings_button_image = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/prefs_idle (3).png')
-        credits_button_image = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/credits_idle (3).png')
-        q_button_image = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/q_idle (3).png')
+        new_game_button_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/start_idle.png')
+        save_button_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/load_idle.png')
+        galery_button_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/galery_idle.png')
+        settings_button_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/prefs_idle.png')
+        credits_button_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/credits_idle.png')
+        q_button_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/q_idle.png')
 
-        new_game_button_image_hover = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/start_hover (3).png')
-        save_button_image_hover = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/load_hover (3).png')
-        galery_button_image_hover = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/galery_hover (3).png')
-        settings_button_image_hover = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/prefs_hover (3).png')
-        credits_button_image_hover = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/credits_hover (3).png')
-        q_button_image_hover = pyglet.image.load('/home/reznnov/rabota/assets/images/main_menu_sprites/q_hover (3).png')
+        new_game_button_image_hover = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/start_hover.png')
+        save_button_image_hover = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/load_hover.png')
+        galery_button_image_hover = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/galery_hover.png')
+        settings_button_image_hover = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/prefs_hover.png')
+        credits_button_image_hover = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/credits_hover.png')
+        q_button_image_hover = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/q_hover.png')
 
 
         self.buttons_idle = []
@@ -185,7 +396,6 @@ class MainMenu:
         for button_sprite in self.buttons_hover:
             button_sprite.opacity = 0
 
-
     def on_mouse_motion(self, x, y, dx, dy):
         for button_sprite in self.buttons_idle:
             if button_sprite.x < x < button_sprite.x + button_sprite.width and \
@@ -207,7 +417,11 @@ class MainMenu:
         # Пример обработки нажатия клавиши Esc для скрытия меню авторов
         if symbol == pyglet.window.key.Q and self.show_authors:
             self.hide_authors_menu()
-
+        if symbol == pyglet.window.key.Q and self.show_settings:
+            self.settings_menu.save_slider_positions('slider_positions.json')
+            self.hide_settings_menu()
+        if symbol == pyglet.window.key.Q and self.show_loads:
+            self.hide_loads_menu()
 
     def update(self, dt):
         pass
@@ -216,15 +430,55 @@ class MainMenu:
         if self.credits_button.x < x < self.credits_button.x + self.credits_button.width and \
                 self.credits_button.y < y < self.credits_button.y + self.credits_button.height:
             self.show_authors_menu()
+        if self.settings_button.x < x < self.settings_button.x + self.settings_button.width and \
+                self.settings_button.y < y < self.settings_button.y + self.settings_button.height:
+            self.show_settings_menu()
+        if self.save_button.x < x < self.save_button.x + self.save_button.width and \
+                self.save_button.y < y < self.save_button.y + self.save_button.height:
+            self.show_loads_menu()
         if self.authors_menu and self.show_authors:
             self.authors_menu.on_mouse_press(x, y, button, modifiers)
+        if self.settings_menu and self.show_settings:
+            self.settings_menu.on_mouse_press(x, y, button, modifiers)
+        if self.load_menu and self.show_loads:
+            self.load_menu.on_mouse_press(x, y, button, modifiers)
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        if self.settings_menu and self.show_settings:
+            self.settings_menu.on_mouse_drag(x, y, dx, dy, buttons, modifiers)
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        if self.settings_menu and self.show_settings:
+            self.settings_menu.on_mouse_release(x, y, button, modifiers)
+
+    def show_settings_menu(self):
+        # создаём экземляр класса SettingsMenu
+        self.settings_menu = SettingsMenu('/home/reznnov/rabota/august_ldjam/images/Settings_menu/prefs_bg.png', self)
+        # меняем значение флаговой переменной
+        self.show_settings = True
 
     def show_authors_menu(self):
         # Создаем экземпляр класса AuthorsMenu
-        self.authors_menu = AuthorsMenu('/home/reznnov/rabota/assets/images/main_menu_sprites/credits_bg.png', self)
-
+        self.authors_menu = AuthorsMenu('/home/reznnov/rabota/august_ldjam/images/Authors_menu/credits_bg.png', self)
         # меняем значение флаговой переменной
         self.show_authors = True
+
+    def show_loads_menu(self):
+        self.load_menu = LoadMenu('/home/reznnov/rabota/august_ldjam/images/load_menu/load_bg.png', self)
+        self.show_loads = True
+
+    def hide_authors_menu(self):
+        self.authors_menu = None
+        self.show_authors = False
+
+    def hide_settings_menu(self):
+        self.settings_menu = None
+        self.show_settings = False
+
+
+    def hide_loads_menu(self):
+        self.load_menu = None
+        self.show_loads = False
 
     def draw(self):
         self.background_sprite.draw()
@@ -235,28 +489,46 @@ class MainMenu:
 
         if self.show_authors and self.authors_menu:
             self.authors_menu.draw()
+        if self.show_settings and self.settings_menu:
+            self.settings_menu.draw()
+        if self.show_loads and self.load_menu:
+            self.load_menu.draw()
 
-    def hide_authors_menu(self):
-        self.authors_menu = None
-        self.show_authors = False
 
-
-
-main_menu = MainMenu('/home/reznnov/rabota/assets/images/main_menu_sprites/bg_main_menu.png')
+main_menu = MainMenu('/home/reznnov/rabota/august_ldjam/images/Main_menu/bg_main_menu.png')
 
 index = 0
-show_authors_menu = False
 
+
+def load_screen_mode_from_json(file_name):
+    try:
+        with open(file_name, 'r') as file:
+            data = json.load(file)
+            fullscreen = data['fullscreen']
+            window.set_fullscreen(fullscreen)  # Установите режим полноэкранного окна
+    except FileNotFoundError:
+        # Если файл не найден, оставляем текущее состояние fullscreen без изменений
+        pass
+
+load_screen_mode_from_json('screen_mode.json')
+def save_screen_mode_to_json(fullscreen, file_name):
+    data = {
+        'fullscreen': fullscreen
+    }
+    with open(file_name, 'w') as file:
+        json.dump(data, file)
 
 
 def set_windowed():
-    global window
     window.set_fullscreen(False)
+    fullscreen = False
     window.set_size(screen_width, screen_height)
+    save_screen_mode_to_json(fullscreen, 'screen_mode.json')
 
 def set_fullscreen():
-    global window
+    fullscreen = True
     window.set_fullscreen(True)
+    save_screen_mode_to_json(fullscreen, 'screen_mode.json')
 
 @window.event()
 def on_key_press(symbol, modifiers):
@@ -284,6 +556,11 @@ def on_mouse_press(x, y, button, modifiers):
 @window.event
 def on_mouse_motion(x, y, dx, dy):
     main_menu.on_mouse_motion(x, y, dx, dy)
+
+
+@window.event
+def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
+    main_menu.on_mouse_drag(x, y, dx, dy, buttons, modifiers)
 
 
 def update(dt):
