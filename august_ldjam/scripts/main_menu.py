@@ -78,6 +78,10 @@ class SettingsMenu:
         # Загрузка сохраненных позиций слайдеров при запуске приложения
         self.load_slider_positions('slider_positions.json')
         self.load_screen_mode_from_json('screen_mode.json')
+        self.load_music_volume_from_json('music_volume.json')
+
+        # Переменная для хранения значения громкости музыки
+        self.music_volume = 0.0
 
         # Загрузка изображений кнопок
         settings_text_speed_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Settings_menu/prefs_text_speed.png')
@@ -114,15 +118,41 @@ class SettingsMenu:
         self.settings_go_to_full_screen_button.scale = 0.5
         self.settings_go_to_window_screen_button.scale = 0.5
 
+    def update_music_volume(self):
+        # Get the x-coordinate of settings_slider_button_2
+        slider_button_2_x = self.settings_slider_button_2.x
 
-    def save_slider_positions(self, filename):
+        # Define the minimum and maximum x-coordinates for volume control
+        min_x = 800
+        max_x = 1220
+
+        # Define the minimum and maximum volume values
+        min_volume = 0.0
+        max_volume = 1.0
+
+        # Calculate the volume based on the x-coordinate
+        if slider_button_2_x <= min_x:
+            self.music_volume = min_volume
+        elif slider_button_2_x >= max_x:
+            self.music_volume = max_volume
+        else:
+            # Linear scaling to calculate the volume within the desired range
+            self.music_volume = (slider_button_2_x - min_x) / (max_x - min_x) * (max_volume - min_volume) + min_volume
+
+        # Применяем новую громкость к музыкальному плееру
+        if main_menu.music_player:
+            main_menu.music_player.volume = self.music_volume
+
+        # Save the music volume to the JSON file
+        self.save_music_volume_to_json('music_volume.json')
+
+
+    def save_music_volume_to_json(self, filename):
         data = {
-            'slider_button_1_x': self.settings_slider_button_1.x,
-            'slider_button_2_x': self.settings_slider_button_2.x,
-            'slider_button_3_x': self.settings_slider_button_3.x
+            'music_volume': self.music_volume
         }
-        with open(filename, 'w') as f:
-            json.dump(data, f)
+        with open(filename, 'w') as file:
+            json.dump(data, file)
 
     def load_slider_positions(self, filename):
         try:
@@ -135,6 +165,20 @@ class SettingsMenu:
             # Обработка случая, когда файл не найден (например, при первом запуске приложения)
             pass
 
+    def load_music_volume_from_json(self, filename):
+        try:
+            with open(filename, 'r') as file:
+                data = json.load(file)
+                self.music_volume = data['music_volume']
+                # Apply the loaded volume to the music player
+                if main_menu.music_player:
+                    main_menu.music_player.volume = self.music_volume
+        except FileNotFoundError:
+            # If the file is not found, set a default value for the music volume
+            self.music_volume = 0.5  # Set your desired default volume value here
+            # Apply the default volume to the music player
+            if main_menu.music_player:
+                main_menu.music_player.volume = self.music_volume
 
     def save_screen_mode_to_json(self, file_name):
         data = {
@@ -152,6 +196,16 @@ class SettingsMenu:
         except FileNotFoundError:
             # Если файл не найден, оставляем текущее состояние fullscreen без изменений
             pass
+
+    def save_slider_positions(self, filename):
+        data = {
+            'slider_button_1_x': self.settings_slider_button_1.x,
+            'slider_button_2_x': self.settings_slider_button_2.x,
+            'slider_button_3_x': self.settings_slider_button_3.x,
+            'music_volume': self.music_volume  # Include the music volume in the data
+        }
+        with open(filename, 'w') as f:
+            json.dump(data, f)
 
 
 
@@ -220,6 +274,7 @@ class SettingsMenu:
             # Обновляем координату X settings_slider_button_1 на основе новой позиции
             self.settings_slider_button_2.x = new2_x
             self.save_slider_positions('slider_positions.json')
+            self.update_music_volume()
 
         if self.dragging_settings_slider_button_3 and buttons & pyglet.window.mouse.LEFT and \
                 self.settings_slider_button_3.y - 20 <= y <= self.settings_slider_button_3.y + self.settings_slider_button_3.height + 20:
@@ -332,6 +387,12 @@ class MainMenu:
         self.show_settings = False
         self.show_loads = False
 
+        music_file = '/home/reznnov/rabota/august_ldjam/audio/2.mp3'  # Замените путь на путь к вашему аудио файлу
+        self.music_player = pyglet.media.Player()
+        self.music_player.queue(pyglet.media.load(music_file))
+        self.load_music_volume_from_json('music_volume.json')
+        self.music_player.play()
+
         # Загрузка изображений кнопок
         new_game_button_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/start_idle.png')
         save_button_image = pyglet.image.load('/home/reznnov/rabota/august_ldjam/images/Main_menu/load_idle.png')
@@ -395,6 +456,21 @@ class MainMenu:
 
         for button_sprite in self.buttons_hover:
             button_sprite.opacity = 0
+
+    def load_music_volume_from_json(self, filename):
+        try:
+            with open(filename, 'r') as file:
+                data = json.load(file)
+                self.music_volume = data['music_volume']
+                # Apply the loaded volume to the music player
+                if self.music_player:
+                    self.music_player.volume = self.music_volume
+        except FileNotFoundError:
+            # If the file is not found, set a default value for the music volume
+            self.music_volume = 0.5  # Set your desired default volume value here
+            # Apply the default volume to the music player
+            if self.music_player:
+                self.music_player.volume = self.music_volume
 
     def on_mouse_motion(self, x, y, dx, dy):
         for button_sprite in self.buttons_idle:
